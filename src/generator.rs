@@ -41,6 +41,7 @@ impl<'a, 'b, 'c, W: Write> Generator<'a, 'b, 'c, W> {
 
         self.writer.write_all(
             b"
+use core::alloc::Layout;
 use core::intrinsics;
 use core::panic::PanicInfo;
 use core::mem;
@@ -309,7 +310,7 @@ pub fn eh_personality() {
 
 #[lang = "oom"]
 #[no_mangle]
-pub extern "C" fn oom() -> ! {
+pub extern "C" fn oom(_layout: Layout) -> ! {
     #[cfg(feature = "KernelPrinting")]
     {
         use core::fmt::Write;
