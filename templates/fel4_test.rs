@@ -58,7 +58,7 @@ fn test_message_info_predictability(
 ) -> Result<(), TestError<(u32, u32, u32, u32)>> {
     runner.run(
         &(0u32..0xfffff, 0u32..0x7, 0u32..0x3, 0u32..0x7f),
-        |&input| {
+        |input| {
             let (label, caps, extra, length) = input;
             let (label, caps, extra, length) = (label as seL4_Word, caps as seL4_Word, extra as seL4_Word, length as seL4_Word);
             let out = unsafe {
@@ -88,7 +88,7 @@ fn test_message_info_predictability(
 fn test_cap_rights_predictability(
     runner: &mut TestRunner,
 ) -> Result<(), TestError<(u32, u32, u32)>> {
-    runner.run(&(0u32..2, 0u32..2, 0u32..2), |&input| {
+    runner.run(&(0u32..2, 0u32..2, 0u32..2), |input| {
         let (grant, read, write) = input;
         let (grant, read, write) = (grant as seL4_Word, read as seL4_Word, write as seL4_Word);
         let out = unsafe {

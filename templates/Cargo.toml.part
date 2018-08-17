@@ -6,7 +6,7 @@ features = ["static_array_backend"]
 optional = true
 
 [dependencies.proptest]
-version = "0.7"
+version = "0.8.4"
 default-features = false
 features = ["alloc", "nightly"]
 optional = true
