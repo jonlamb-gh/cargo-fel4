@@ -66,14 +66,20 @@ pub fn handle_build_cmd(subcmd: &BuildCmd) -> Result<(), Error> {
             &root_task_path, e
         ))
     })?;
-    let mut root_file = File::create(root_task_path.join("root-task.rs").as_path())
-        .map_err(|e| Error::IO(format!("Could not create root-task file. {}", e)))?;
-    Generator::new(
-        &mut root_file,
-        &config.pkg_module_name,
-        &config.arch,
-        &fel4_flags,
-    ).generate()?;
+
+    // TESTING
+    if ! root_task_path.join("root-task.rs").exists() {
+        let mut root_file = File::create(root_task_path.join("root-task.rs").as_path())
+            .map_err(|e| Error::IO(format!("Could not create root-task file. {}", e)))?;
+        Generator::new(
+            &mut root_file,
+            &config.pkg_module_name,
+            &config.arch,
+            &fel4_flags,
+        ).generate()?;
+    } else {
+        println!("\n!!! NOT OVERWRITING ROOT TASK !!!\n");
+    }
 
     match is_current_dir_root_dir(&config.root_dir) {
         Ok(are_same) if !are_same => return Err(Error::ExitStatusError("The build command does not work with a cargo manifest directory that differs from the current working directory due to limitations of Xargo".to_string())),
