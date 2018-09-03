@@ -44,8 +44,8 @@ impl<'a, 'b, 'c, W: Write> Generator<'a, 'b, 'c, W> {
 use core::alloc::Layout;
 use core::intrinsics;
 use core::panic::PanicInfo;
-use core::mem;
-use sel4_sys::*;\n\n",
+use sel4_sys::*;
+use sel4twinkle_alloc::Allocator;\n\n",
         )?;
 
         self.writer.write_all(b"#[cfg(feature = \"alloc\")]\n")?;
@@ -66,25 +66,6 @@ pub mod sel4_config {\n",
         self.writer
             .write_all(BOOT_INFO_AND_LANG_ITEM_CODE.as_bytes())?;
 
-        self.writer.write_all(
-            b"
-fn get_untyped(info: &seL4_BootInfo, size_bytes: usize) -> Option<seL4_CPtr> {
-    let mut idx = 0;
-    for i in info.untyped.start..info.untyped.end {
-        if (1 << info.untypedList[idx].sizeBits) >= size_bytes {
-            return Some(i);
-        }
-        idx += 1;
-    }
-    None
-}
-
-const CHILD_STACK_SIZE: usize = 4096;
-static mut CHILD_STACK: *const [u64; CHILD_STACK_SIZE] =
-    &[0; CHILD_STACK_SIZE];
-
-        ",
-        )?;
         self.generate_main()?;
         let asm = match *self.arch {
             Arch::X86 => X86_ASM,
@@ -105,7 +86,6 @@ static mut CHILD_STACK: *const [u64; CHILD_STACK_SIZE] =
 #![cfg_attr(feature = \"alloc\", feature(alloc))]
 #![feature(lang_items, core_intrinsics)]
 #![feature(global_asm)]
-#![cfg_attr(feature = \"alloc\", feature(global_allocator))]
 #![feature(panic_implementation)]
 #![feature(panic_info_message)]\n\n"
         )?;
@@ -119,6 +99,8 @@ static mut CHILD_STACK: *const [u64; CHILD_STACK_SIZE] =
             .write_all(b"#[cfg(all(feature = \"test\", feature = \"alloc\"))]\n")?;
         self.writer.write_all(b"#[macro_use]\n")?;
         self.writer.write_all(b"extern crate proptest;\n")?;
+        self.writer
+            .write_all(b"extern crate sel4twinkle_alloc;\n")?;
         Ok(())
     }
 
@@ -127,102 +109,52 @@ static mut CHILD_STACK: *const [u64; CHILD_STACK_SIZE] =
             b"
 fn main() {
     let bootinfo = unsafe { &*BOOTINFO };
-    let cspace_cap = seL4_CapInitThreadCNode;
-    let pd_cap = seL4_CapInitThreadVSpace;
-    let tcb_cap = bootinfo.empty.start;
-    let untyped = get_untyped(bootinfo, 1 << seL4_TCBBits).unwrap();
-    let retype_err: seL4_Error = unsafe {
-        seL4_Untyped_Retype(
-            untyped,
-            api_object_seL4_TCBObject.into(),
-            seL4_TCBBits.into(),
-            cspace_cap.into(),
-            cspace_cap.into(),
-            seL4_WordBits.into(),
-            tcb_cap,
-            1,
-        )
-    };
 
-    assert!(retype_err == 0, \"Failed to retype untyped memory\");
+    let mut allocator = Allocator::new();
+    allocator.bootstrap(bootinfo);
+    allocator
+        .bootstrap_vspace(seL4_CapInitThreadVSpace)
+        .unwrap();
 
-    let tcb_err: seL4_Error = unsafe {
-        seL4_TCB_Configure(
-            tcb_cap,
-            seL4_CapNull.into(),
-            cspace_cap.into(),
-            seL4_NilData.into(),
-            pd_cap.into(),
-            seL4_NilData.into(),
-            0,
-            0,
-        )
-    };
+    let fault_ep_obj = allocator.vka_alloc_endpoint().unwrap();
+    let fault_ep_cap = fault_ep_obj.cptr;
 
-    assert!(tcb_err == 0, \"Failed to configure TCB\");
-
-    let stack_base = unsafe { CHILD_STACK as usize };
-    let stack_top = stack_base + CHILD_STACK_SIZE;
-    let mut regs: seL4_UserContext = unsafe { mem::zeroed() };\n",
+    // call user application init\n",
         )?;
 
-        match *self.arch {
-            Arch::X86 | Arch::X86_64 => {
-                writeln!(
-                    self.writer,
-                    "    #[cfg(feature = \"test\")]
-    {{ regs.rip = {}::fel4_test::run as seL4_Word; }}
-    #[cfg(not(feature = \"test\"))]
-    {{ regs.rip = {}::run as seL4_Word; }}",
-                    self.package_module_name, self.package_module_name,
-                )?;
-                writeln!(self.writer, "    regs.rsp = stack_top as seL4_Word;")?;
-            }
-            Arch::Armv7 => {
-                writeln!(
-                    self.writer,
-                    "    #[cfg(feature = \"test\")]
-    {{ regs.pc = {}::fel4_test::run as seL4_Word; }}
-    #[cfg(not(feature = \"test\"))]
-    {{ regs.pc = {}::run as seL4_Word; }}",
-                    self.package_module_name, self.package_module_name
-                )?;
-                writeln!(self.writer, "    regs.sp = stack_top as seL4_Word;")?;
-            }
-            Arch::Aarch64 => {
-                writeln!(
-                    self.writer,
-                    "    #[cfg(feature = \"test\")]
-    {{ regs.pc = {}::fel4_test::run as seL4_Word; }}
-    #[cfg(not(feature = \"test\"))]
-    {{ regs.pc = {}::run as seL4_Word; }}",
-                    self.package_module_name, self.package_module_name
-                )?;
-                writeln!(self.writer, "    regs.sp = stack_top as seL4_Word;")?;
-            }
-        }
+        // TODO - need to hook tesing back up
+        writeln!(
+            self.writer,
+            "{}::init(&mut allocator, fault_ep_cap);\n",
+            self.package_module_name
+        )?;
+
         self.writer.write_all(
             b"
-    let _: u32 =
-        unsafe { seL4_TCB_WriteRegisters(tcb_cap, 0, 0, 2, &mut regs) };
-    let _: u32 = unsafe {
-        seL4_TCB_SetPriority(tcb_cap, seL4_CapInitThreadTCB.into(), 255)
-    };
-    let _: u32 = unsafe { seL4_TCB_Resume(tcb_cap) };
     loop {
-        unsafe {
-            seL4_Yield();
-        }
-    }
-}
-        ",
+        let mut badge: seL4_Word = 0;
+
+        let _msg_tag = unsafe { seL4_Wait(fault_ep_cap, &mut badge) };\n",
         )?;
+
+        writeln!(
+            self.writer,
+            "{}::handle_fault(badge);\n",
+            self.package_module_name,
+        )?;
+
+        self.writer.write_all(
+            b"
+    }
+}\n",
+        )?;
+
         Ok(())
     }
 }
 
 const BOOT_INFO_AND_LANG_ITEM_CODE: &str = r##"
-pub static mut BOOTINFO: *mut seL4_BootInfo = (0 as *mut seL4_BootInfo);
+static mut BOOTINFO: *mut seL4_BootInfo = (0 as *mut seL4_BootInfo);
 static mut RUN_ONCE: bool = false;
 
 #[no_mangle]

@@ -1,4 +1,6 @@
-libsel4-sys = {git = "https://github.com/PolySync/libsel4-sys.git", branch = "master"}
+#libsel4-sys = {git = "https://github.com/PolySync/libsel4-sys.git", branch = "master"}
+libsel4-sys = {git = "https://github.com/jonlamb-gh/libsel4-sys.git", branch = "devel"}
+sel4twinkle-alloc = {git = "https://github.com/jonlamb-gh/sel4twinkle-alloc-rs.git", branch = "master"}
 
 [dependencies.wee_alloc]
 version = "0.4"
