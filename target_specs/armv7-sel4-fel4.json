@@ -7,22 +7,14 @@
     "os": "sel4",
     "env": "fel4",
     "arch": "arm",
-    "linker-is-gnu": true,
     "executables": true,
-    "linker": "arm-linux-gnueabihf-gcc",
-    "ar": "arm-linux-gnueabihf-ar",
+    "linker": "rust-lld",
     "relocation-model": "static",
     "position-independent-executables": true,
     "has-elf-tls": true,
     "panic-strategy": "abort",
     "no-default-libraries": true,
     "features": "+v7,+vfp3,+d16,+thumb2,-neon",
-    "linker-flavor": "gcc",
-    "pre-link-args": {
-        "gcc": ["-ffreestanding", "-nodefaultlibs", "-nostdlib"]
-    },
-    "post-link-args": {
-        "gcc": ["-lm", "-lgcc_s", "-lgcc"]
-    },
+    "linker-flavor": "ld.lld",
     "default-codegen-units": 1
 }
