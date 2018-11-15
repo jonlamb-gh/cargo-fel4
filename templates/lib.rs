@@ -9,7 +9,6 @@ extern crate alloc;
 extern crate sel4_sys;
 
 #[cfg(all(feature = "test"))]
-#[macro_use]
 extern crate proptest;
 
 #[cfg(feature = "test")]

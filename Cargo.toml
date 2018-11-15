@@ -12,7 +12,9 @@ readme = "README.md"
 cargo_metadata = "0.5"
 cmake_config = { version = "0.1.1", path = "cmake_config" }
 colored = "1.6"
-fel4-config = "0.3"
+#fel4-config = "0.3"
+# Using my fork for testing
+fel4-config = { git = "https://github.com/jonlamb-gh/fel4-config.git", branch = "add-rpi3-support" }
 log = "0.4"
 structopt = "0.2"
 

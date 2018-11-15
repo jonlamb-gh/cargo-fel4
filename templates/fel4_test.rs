@@ -1,7 +1,5 @@
-use proptest::prelude::*;
 use proptest::test_runner::{TestCaseError, TestError, TestRunner};
 
-use alloc::string::String;
 use core::fmt;
 #[cfg(feature = "KernelPrinting")]
 use sel4_sys::DebugOutHandle;

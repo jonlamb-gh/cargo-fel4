@@ -105,8 +105,6 @@ static mut CHILD_STACK: *const [u64; CHILD_STACK_SIZE] =
 #![cfg_attr(feature = \"alloc\", feature(alloc))]
 #![feature(lang_items, core_intrinsics)]
 #![feature(global_asm)]
-#![cfg_attr(feature = \"alloc\", feature(global_allocator))]
-#![feature(panic_implementation)]
 #![feature(panic_info_message)]\n\n"
         )?;
 
@@ -117,7 +115,6 @@ static mut CHILD_STACK: *const [u64; CHILD_STACK_SIZE] =
         self.writer.write_all(b"extern crate alloc;\n")?;
         self.writer
             .write_all(b"#[cfg(all(feature = \"test\", feature = \"alloc\"))]\n")?;
-        self.writer.write_all(b"#[macro_use]\n")?;
         self.writer.write_all(b"extern crate proptest;\n")?;
         Ok(())
     }
@@ -248,7 +245,6 @@ impl Termination for () {
 }
 
 #[lang = "start"]
-#[no_mangle]
 fn lang_start<T: Termination + 'static>(
     main: fn() -> T,
     _argc: isize,
@@ -258,8 +254,7 @@ fn lang_start<T: Termination + 'static>(
     panic!("Root task should never return from main!");
 }
 
-#[panic_implementation]
-#[no_mangle]
+#[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     #[cfg(feature = "KernelPrinting")]
     {
