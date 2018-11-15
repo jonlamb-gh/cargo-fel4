@@ -16,8 +16,6 @@
     "has-elf-tls": true,
     "panic-strategy": "abort",
     "no-default-libraries": true,
-    "features": "+a57,+fullfp16,-neon",
-    "cpu": "cortex-a57",
     "linker-flavor": "gcc",
     "pre-link-args": {
         "gcc": ["-ffreestanding", "-nodefaultlibs", "-nostdlib"]
