@@ -60,20 +60,24 @@ pub fn handle_build_cmd(subcmd: &BuildCmd) -> Result<(), Error> {
     // Generate the source code entry point (root task) for the application
     // that will wrap the end-user's code as executing within a sub-thread
     let root_task_path = config.root_dir.join("src").join("bin");
-    fs::create_dir_all(&root_task_path).map_err(|e| {
-        Error::IO(format!(
-            "Difficulty creating directory, {:?} : {}",
-            &root_task_path, e
-        ))
-    })?;
-    let mut root_file = File::create(root_task_path.join("root-task.rs").as_path())
-        .map_err(|e| Error::IO(format!("Could not create root-task file. {}", e)))?;
-    Generator::new(
-        &mut root_file,
-        &config.pkg_module_name,
-        &config.arch,
-        &fel4_flags,
-    ).generate()?;
+    if !root_task_path.exists() {
+        fs::create_dir_all(&root_task_path).map_err(|e| {
+            Error::IO(format!(
+                "Difficulty creating directory, {:?} : {}",
+                &root_task_path, e
+            ))
+        })?;
+        let mut root_file = File::create(root_task_path.join("root-task.rs").as_path())
+            .map_err(|e| Error::IO(format!("Could not create root-task file. {}", e)))?;
+        Generator::new(
+            &mut root_file,
+            &config.pkg_module_name,
+            &config.arch,
+            &fel4_flags,
+        ).generate()?;
+    } else {
+        warn!("Keeping your existing root-task.rs as requested");
+    }
 
     match is_current_dir_root_dir(&config.root_dir) {
         Ok(are_same) if !are_same => return Err(Error::ExitStatusError("The build command does not work with a cargo manifest directory that differs from the current working directory due to limitations of Xargo".to_string())),
